@@ -79,24 +79,24 @@ def addFileToDataset(dataset,fileDir):
 def sortFunc(item):
 	return(item["d"])
 
-def distanceWithType(point1,point2,type="L1"):
+def distanceWithType(point1,point2,type=1):
 	distance = 0
 	edgeList = list(set(list(point1.keys())+list(point2.keys())))
-	if(type=="L2"):
-		sumSquares = 0
-		for i,key in enumerate(edgeList):
-			sumSquares += (abs(float(point1.get(key,0))-float(point2.get(key,0))))**2
-		distance = sumSquares**(0.5)
-	else:
+	if(type==1):
 		for i,key in enumerate(edgeList):
 			distance += abs(float(point1.get(key,0))-float(point2.get(key,0)))
+	else:
+		sum = 0
+		for i,key in enumerate(edgeList):
+			sum += (abs(float(point1.get(key,0))-float(point2.get(key,0))))**type
+		distance = sum**(1/type)
 	return distance
 
 def hashFunc(dataPoint):
 	return((dataPoint["x"],dataPoint["y"],dataPoint["d"]))
 
 #inData is just signal strength list
-def getKnnAll(dataset,inData,elimRepeats=False,distanceType="L1"):
+def getKnnAll(dataset,inData,elimRepeats=False,distanceType=1):
 	nn = []
 
 	datasetDistance=[]
@@ -123,7 +123,7 @@ def getKnnAll(dataset,inData,elimRepeats=False,distanceType="L1"):
 	nn = datasetDistance
 	return nn
 
-def runTest(trainDataset,testDataset,nmin,nstep,nmax,inFile=None,outFile=None):
+def runTest(trainDataset,testDataset,nmin,nstep,nmax,distanceType=1):
 	distances = {}
 	totalN = len(testDataset)
 
@@ -131,16 +131,7 @@ def runTest(trainDataset,testDataset,nmin,nstep,nmax,inFile=None,outFile=None):
 		print(f"Calculating sample {i+1}/{totalN}")
 
 		realx,realy = float(testDataPoint["position"]["x"]),float(testDataPoint["position"]["y"])
-
-		if(inFile == None):
-			nn = getKnnAll(trainDataset,testDataPoint["signals"])
-		else:
-			with open(inFile,'rb') as fileObj:
-				nn = pickle.load(inFile)
-
-		if(outFile != None):
-			with open(outFile, 'wb') as fileObj:
-				pickle.dump(nn,fileObj)
+		nn = getKnnAll(trainDataset,testDataPoint["signals"],distanceType=distanceType)
 
 		for i in range(nmin,nmax+1,nstep):
 			infx,infy = weightedAverage(nn[:i])
@@ -162,10 +153,10 @@ if __name__ == "__main__":
 	
 	directoryTest = "./experiment/experiment1/test"
 	testDataset = makeDataset(directoryTest)
-	distances = runTest(trainDataset,testDataset,1,1,300,outFile="nearestNeighbors.data")
+	distances = runTest(trainDataset,testDataset,1,1,300,distanceType=4)
 	avgDistances =  distancesToAvg(distances)
-	with open('resultsMultiknn.txt','w+') as file:
+	with open('distances.txt','w+') as file:
 		file.write(pprint.pformat(avgDistances))
-	with open('resultsMultiknn.data','wb') as file:
+	with open('distances.data','wb') as file:
 		pickle.dump(avgDistances,file)
 
