@@ -16,7 +16,7 @@ if __name__ == "__main__":
 	xaxis = []
 	yaxis = []
 	for i,(key,val) in enumerate(res.items()):
-		if(i>100):
+		if(i>100000):
 			break
 		xaxis.append(key)
 		yaxis.append(val)

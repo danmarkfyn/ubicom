@@ -5,6 +5,11 @@ import pprint
 import pickle
 from math import sqrt,pow
 
+
+################################
+# FUNCTIONS TO MAKE DATASET
+################################
+
 #Points shape:
 #{"x":xval,"y":yval,"d":distance}
 def weightedAverage(points):
@@ -65,44 +70,33 @@ def addFileToDataset(dataset,fileDir):
 				dataset.append({"signals":signals,"position":position})
 	return dataset
 
+
+################################
+# FUNCTIONS TO GET DISTANCE/NN
+################################
+
 #Used to sort by distance
 def sortFunc(item):
 	return(item["d"])
 
-#n is number of neighbors
-#inData is just signal strength list
-def getKnn(dataset,n,inData,elimRepeats):
-	nn = []
-
-	datasetDistance=[]
-
-	for dataPoint in dataset:
-		distance = 0
-		signalsPoint = dataPoint["signals"]
-		for i,key in enumerate(inData.keys()):
-			distance += abs(float(signalsPoint.get(key,0))-float(inData.get(key,0)))
-			dataPointDistance = dataPoint["position"]
-			dataPointDistance["d"] = distance
-			datasetDistance.append(dataPointDistance)
-
-	for dataPoint in datasetDistance:
-		insert = True
-		if(elimRepeats):
-			insert = dataPoint not in nn
-		if(insert):
-			nn.append(dataPoint)
-			nn.sort(key=sortFunc)
-		if len(nn)>n:
-			nn = nn[0:n]
-	return nn
-
+def distanceWithType(point1,point2,type="L1"):
+	distance = 0
+	edgeList = list(set(list(point1.keys())+list(point2.keys())))
+	if(type=="L2"):
+		sumSquares = 0
+		for i,key in enumerate(edgeList):
+			sumSquares += (abs(float(point1.get(key,0))-float(point2.get(key,0))))**2
+		distance = sumSquares**(0.5)
+	else:
+		for i,key in enumerate(edgeList):
+			distance += abs(float(point1.get(key,0))-float(point2.get(key,0)))
+	return distance
 
 def hashFunc(dataPoint):
 	return((dataPoint["x"],dataPoint["y"],dataPoint["d"]))
 
-#n is number of neighbors
 #inData is just signal strength list
-def getKnn2(dataset,n,inData,elimRepeats):
+def getKnnAll(dataset,inData,elimRepeats=False,distanceType="L1"):
 	nn = []
 
 	datasetDistance=[]
@@ -111,8 +105,9 @@ def getKnn2(dataset,n,inData,elimRepeats):
 	for dataPoint in dataset:
 		distance = 0
 		signalsPoint = dataPoint["signals"]
-		for i,key in enumerate(inData.keys()):
-			distance += abs(float(signalsPoint.get(key,0))-float(inData.get(key,0)))
+
+		distance = distanceWithType(signalsPoint,inData,distanceType)
+
 		dataPointDistance = dataPoint["position"]
 		dataPointDistance["d"] = distance
 		if(elimRepeats):
@@ -122,34 +117,7 @@ def getKnn2(dataset,n,inData,elimRepeats):
 		else:
 			datasetDistance.append(dataPointDistance)
 
-
-	datasetDistance.sort(key=sortFunc)
-
-	nn = datasetDistance[0:n]
-
-	return nn
-
-def getKnnAll(dataset,inData,elimRepeats=False):
-	nn = []
-
-	datasetDistance=[]
-	tester = {}
-
-	for dataPoint in dataset:
-		distance = 0
-		signalsPoint = dataPoint["signals"]
-		for i,key in enumerate(inData.keys()):
-			distance += abs(float(signalsPoint.get(key,0))-float(inData.get(key,0)))
-		dataPointDistance = dataPoint["position"]
-		dataPointDistance["d"] = distance
-		if(elimRepeats):
-			if(not(tester.get(hashFunc(dataPointDistance),False))):
-				datasetDistance.append(dataPointDistance)
-				tester[hashFunc(dataPointDistance)] = True
-		else:
-			datasetDistance.append(dataPointDistance)
-
-
+	#Probably replace this with a priority queue instead of having to sort
 	datasetDistance.sort(key=sortFunc)
 
 	nn = datasetDistance
@@ -163,7 +131,7 @@ def runTest(trainDataset,testDataset,nmin,nstep,nmax,inFile=None,outFile=None):
 		print(f"Calculating sample {i+1}/{totalN}")
 
 		realx,realy = float(testDataPoint["position"]["x"]),float(testDataPoint["position"]["y"])
-		
+
 		if(inFile == None):
 			nn = getKnnAll(trainDataset,testDataPoint["signals"])
 		else:
